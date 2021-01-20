@@ -3,6 +3,6 @@ python train.py --maxdisp 192 \
                --datapath /media/yoko/SSD-PGU3/workspace/datasets/KITTI/data_scene_flow/training/ \
                --epochs 100 \
                --savemodel ./result \
-               --loadmodel result/weights/FCSMNet99_baseline+Rec100.tar 
+               --loadmodel result/weights/FCSMNet299.tar 
 
                

@@ -82,7 +82,7 @@ if args.loadmodel is not None:
 print('Number of model parameters: {}'.format(sum([p.data.nelement() for p in model.parameters()])))
 
 optimizer = optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999))
-
+ 
 criterian = LRLoss()
 
 def train(imgL,imgR, disp_L,disp_R,idx):
@@ -112,11 +112,20 @@ def train(imgL,imgR, disp_L,disp_R,idx):
             save_image(disp_left/torch.max(disp_left), 'result/train/"right_' + test_left_img[idx].split('/')[-1])
 
         
-        criterian(disp_left,disp_right,imgL,imgR)
+        RecLoss, SmoothnessLoss, LRLoss = criterian(disp_left,disp_right,imgL,imgR)
         if disp_left.ndim == 4:
             disp_left = torch.squeeze(disp_left,0)
             disp_right = torch.squeeze(disp_right,0)
-        loss = F.smooth_l1_loss(disp_left[maskL], disp_trueL[maskL], size_average=True) + F.smooth_l1_loss(disp_right[maskR], disp_trueR[maskR], size_average=True)
+        
+        GTLossL = F.smooth_l1_loss(disp_left[maskL], disp_trueL[maskL], size_average=True)
+        GTLossR = F.smooth_l1_loss(disp_right[maskR], disp_trueR[maskR], size_average=True)
+        loss =GTLossL + GTLossR + RecLoss +  SmoothnessLoss+ LRLoss
+
+        print("GTLossL=",GTLossL)
+        print("GTLossR=",GTLossR)
+        print("RecLoss=",RecLoss)
+        print("SmoothnessLoss=",SmoothnessLoss)
+        print("LRLoss=",LRLoss)
         
 
 
