@@ -1,40 +1,33 @@
 # FCSMNet_LR
 
-##train
-
+<h2>train</h2>
 train.sh
 
 <h2>inference</h2>
 inference.sh
 
-##tested env
+<h2>tested env</h2>
 + CUDA10.2
-
 + NVIDIA-DRIVER 440.100
 + pytorch 1.5.0
-
 + python 3.6.9
-
 + tensorboard
 
 
 
-##dataset supported
-+ KITTI 2015
-
-+ right ground truth disparity map
-
-you can get from [here](https://github.com/yokosyun/kitti_leftDisp2rightDisp)
+<h2>dataset supported</h2>
++ KITTI 2015(leftImg, rightImg, DispLeft,(DispRight))
+  you can get right disparity map from [here](https://github.com/yokosyun/kitti_leftDisp2rightDisp)
 
 
 
-##model description
+<h2>model description</h2>
 
-###input
+<h3>input</h3>
 left and right image
 
-###output
+<h3>output</h3>
 leftDisp and rightDisp
 
-###loss
+<h3>loss</h3>
 ReconstructionLoss, DisparitySmoothnessLoss, LRconsistencyLoss, GroundTruthLoss
