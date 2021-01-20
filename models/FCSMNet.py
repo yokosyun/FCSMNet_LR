@@ -16,9 +16,9 @@ Act = nn.ReLU
 # Act = MishAuto
 
 
-class PSMNet(nn.Module):
+class FCSMNet(nn.Module):
     def __init__(self, maxdisp):
-        super(PSMNet, self).__init__()
+        super(FCSMNet, self).__init__()
         self.maxdisp = maxdisp
         self.feature_extraction = feature_extraction()
 

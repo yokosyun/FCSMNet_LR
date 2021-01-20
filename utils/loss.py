@@ -26,8 +26,6 @@ class LRLoss(nn.Module):
         SAD_left = torch.mean(torch.abs(left - estLeft))
         SAD_right = torch.mean(torch.abs(right - estRight))
 
-        # SSIM_left = 0.5 * self.SSIM1(gray_left,gray_estLeft,3) + 0.5 * self.SSIM1(gray_left,gray_estLeft,5)
-        # SSIM_right = 0.5 * self.SSIM1(gray_right,gray_esttRight,3) + 0.5 * self.SSIM1(gray_right,gray_esttRight,5)
         SSIM_left =  self.SSIM(gray_left,gray_estLeft,3,"left")
         SSIM_right = self.SSIM(gray_right,gray_esttRight,3,"right")
 
@@ -37,8 +35,6 @@ class LRLoss(nn.Module):
         REC_loss = rec_loss_left + rec_loss_right
 
         # # 2. Depth SMOOTHNESS loss
-        # # left_disp_smooth = self.DepthSmoothness(disp_left, left)
-        # # right_disp_smooth = self.DepthSmoothness(disp_right, right)
         # left_disp_smooth = self.DisparitySmoothness(disp_left, left)
         # right_disp_smooth = self.DisparitySmoothness(disp_right, right)
 
@@ -169,123 +165,6 @@ class LRLoss(nn.Module):
 
         return output
 
-
-    def getDepthMask(self,input,viz_image=False):
-
-        test_x = input[:,:,:,0]
-        test_x = test_x.unsqueeze(3)
-        test_y = input[:,:,0,:]
-        test_y = test_y.unsqueeze(2)
-
-        diff_x = torch.abs(input[:, :, :, :-1] - input[:, :, :, 1:])
-        diff_y = torch.abs(input[:, :, :-1, :] - input[:, :, 1:, :])
-        diff_x = torch.cat([diff_x, test_x], axis=3)
-        diff_y = torch.cat([diff_y, test_y], axis=2)
-        
-        diff_x_r = torch.abs(input[:, :, :, 1:] - input[:, :, :, :-1])
-        diff_y_r = torch.abs(input[:, :, 1:, :] - input[:, :, :-1, :])
-        diff_x_r = torch.cat([test_x,diff_x_r], axis=3)
-        diff_y_r = torch.cat([test_y,diff_y_r], axis=2)
-
-
-        diff_xy = torch.abs(input[:, :, :-1, :-1] - input[:, :, 1:, 1:])
-        diff_yx = torch.abs(input[:, :, 1:, 1:] - input[:, :, :-1, :-1])
-        diff_xy = torch.cat([diff_xy , test_x[:,:,:-1,:]], axis=3)
-        diff_xy = torch.cat([diff_xy , test_y], axis=2)
-        diff_yx = torch.cat([test_x[:,:,:-1,:],diff_yx], axis=3)
-        diff_yx = torch.cat([test_y,diff_yx], axis=2)
-
-        diff_xy_r = torch.abs(input[:, :, :-1, 1:] - input[:, :, 1:, :-1])
-        diff_yx_r = torch.abs(input[:, :, 1:, :-1] - input[:, :, :-1, 1:])
-        diff_xy_r = torch.cat([diff_xy_r , test_x[:,:,:-1,:]], axis=3)
-        diff_xy_r = torch.cat([test_y , diff_xy_r], axis=2)
-        diff_yx_r = torch.cat([test_x[:,:,:-1,:],diff_yx_r], axis=3)
-        diff_yx_r = torch.cat([diff_yx_r , test_y], axis=2)
-
-        depth_diff_thresh = 1 #[m]
-        depth_max_thresh = 100 #[m]
-
-        diff_x = diff_x <  depth_diff_thresh
-        diff_y = diff_y <  depth_diff_thresh
-
-        diff_x_r = diff_x_r <  depth_diff_thresh
-        diff_y_r = diff_y_r <  depth_diff_thresh
-
-        diff_xy = diff_xy <  depth_diff_thresh
-        diff_yx = diff_yx <  depth_diff_thresh
-
-        diff_xy_r = diff_xy_r <  depth_diff_thresh
-        diff_yx_r = diff_yx_r <  depth_diff_thresh
-
-        max_depth_filter = input < depth_max_thresh
-
-        depth_mask = diff_x * diff_y * diff_x_r * diff_y_r
-
-        depth_mask_full = depth_mask * diff_xy * diff_yx * diff_xy_r * diff_yx_r
-
-        depth_mask_full_100 = depth_mask_full * max_depth_filter
-
-
-        sum_filter = torch.cuda.FloatTensor(
-            [[1, 1, 1], [1, 1, 1], [1, 1, 1]]).view(1, 1, 3, 3)
-
-        neiborhood_filter = torch.nn.functional.conv2d(input=depth_mask_full_100.float(),
-                                    weight=Variable(sum_filter),
-                                    stride=1,
-                                    padding=1)
-
-        # this is to reduce effect of smoothing around edge by increasing masking area
-        neiborhood_filter = neiborhood_filter >= 9
-
-        # weight_pixle = torch.exp(-input/depth_max_thresh/2), out=None)
-        weight_pixle = 1 - input/depth_max_thresh
-
-        weight_pixle = neiborhood_filter * weight_pixle
-
-        if(viz_image):
-            save_image(weight_pixle, 'result/train/weight_pixle.png')
-            save_image(max_depth_filter.float(), 'result/train/max_depth_filter.png')
-            save_image(depth_mask_full_100.float(), 'result/train/depth_mask_full_100.png')
-            save_image(neiborhood_filter.float(), 'result/train/neiborhood_filter.png')
-            save_image(weight_pixle, 'result/train/weight_pixle.png')
-
-        return neiborhood_filter
-
-    def DepthSmoothness(self, disp, img,viz_image=False):
-        # 8 direction Laplacian
-        laplacian_filter = torch.cuda.FloatTensor(
-            [[1, 1, 1], [1, -8, 1], [1, 1, 1]]).view(1, 1, 3, 3)
-
-        #https://github.com/mrharicot/monodepth/issues/118
-        focal = 7.070912e+02# this is for KITTI dataset
-        baseline = 0.54
-        image_scale = 1
-
-        gray = self.getGrayImage(img)
-
-        depth = focal * baseline / (disp *image_scale )
-
-
-        depth_mask = self.getDepthMask(depth)
-
-        depth_lap = torch.nn.functional.conv2d(input=depth,
-                                            weight=Variable(laplacian_filter),
-                                            stride=1,
-                                            padding=1)
-
-
-        depth_lap = torch.abs(depth_lap)
-
-        # weight_pixle = torch.exp(-img_lap, out=None)
-        weight_pixle = depth_mask
-        masking_depth_lap = weight_pixle * depth_lap
-
-        # you can check the peformance
-        if (viz_image):
-            save_image(depth_lap, 'result/train/depth_lap.png')
-            save_image(masking_depth_lap, 'result/train/masking_depth_lap.png')
-
-        return torch.mean(masking_depth_lap)
 
     def DisparitySmoothness(self, disp, img,viz_image=False):
         # 8 direction Laplacian
