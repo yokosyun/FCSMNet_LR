@@ -22,7 +22,7 @@ inference.sh
 <h2>dataset supported</h2>
 + KITTI 2015(leftImg, rightImg, DispLeft,(DispRight))
 
-  you can get right disparity map from [here](https://github.com/yokosyun/kitti_leftDisp2rightDisp)
+you can get right disparity map from [here](https://github.com/yokosyun/kitti_leftDisp2rightDisp)
 
 
 
