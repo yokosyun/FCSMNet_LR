@@ -8,15 +8,20 @@ inference.sh
 
 <h2>tested env</h2>
 + CUDA10.2
+
 + NVIDIA-DRIVER 440.100
+
 + pytorch 1.5.0
+
 + python 3.6.9
+
 + tensorboard
 
 
 
 <h2>dataset supported</h2>
 + KITTI 2015(leftImg, rightImg, DispLeft,(DispRight))
+
   you can get right disparity map from [here](https://github.com/yokosyun/kitti_leftDisp2rightDisp)
 
 
