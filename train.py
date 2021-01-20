@@ -14,8 +14,6 @@ import time
 import math
 from dataloader import KITTIloader2015 as lt
 from dataloader import KITTILoader as DA
-from models import stackhourglass as psm_net
-from models import basic as basic_net
 from models import FCSMNet as FCSMNet
 from torchvision.utils import save_image
 from torch.utils.tensorboard import SummaryWriter
@@ -26,7 +24,7 @@ from utils.loss  import *
 writer_train = SummaryWriter(log_dir="./logs/train")
 writer_test = SummaryWriter(log_dir="./logs/test")
 
-parser = argparse.ArgumentParser(description='PSMNet')
+parser = argparse.ArgumentParser(description='FCSMNet')
 parser.add_argument('--maxdisp', type=int ,default=192,
                     help='maxium disparity')
 parser.add_argument('--model', default='da',
@@ -66,13 +64,8 @@ from dataloader import KITTI_submission_loader as DA
 test_left_img, test_right_img = DA.dataloader(args.datapath)
 
 
-if args.model == 'stackhourglass':
-    model = psm_net.PSMNet(args.maxdisp)
-elif args.model == 'basic':
-    model = basic_net.PSMNet(args.maxdisp)
-
-elif args.model == 'FCSMNet':
-    model = FCSMNet.PSMNet(args.maxdisp)
+if args.model == 'FCSMNet':
+    model = FCSMNet.FCSMNet(args.maxdisp)
 else:
     print('no model')
 
@@ -89,73 +82,9 @@ if args.loadmodel is not None:
 print('Number of model parameters: {}'.format(sum([p.data.nelement() for p in model.parameters()])))
 
 optimizer = optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999))
-
+ 
 criterian = LRLoss()
 
-
-def left2right(disp,ind):
-    disp = disp.cpu()
-    focal = 7.070493000000e+02
-    baseline = 0.54
-    eps = 0.00000001
-    depth = focal * baseline /(disp+eps)
-
-    
-
-    thresh = torch.nn.Threshold(threshold = -100.0,value= 0.0 , inplace = False)
-    thresh_ind = torch.nn.Threshold(threshold = -disp.shape[2],value= 0.0 , inplace = False)    
-    depth =thresh(-depth)
-    depth = depth*(-1)
-
-    save_image(depth, 'result/train/depth.png')
-    save_image(disp/torch.max(disp), 'result/train/disp_aaaaa.png')
-
-    disp_r = torch.zeros([1,disp.shape[1],disp.shape[2]])
-
-    num = "%.6d" %(ind)
-    
-    filename = str(num)
- 
-    filename += "_10.png" 
-
-    print(filename)
-
-    print('result/disp_r/'+filename)
-
-
-    cx= depth.shape[2]/2
-    for u in range (depth.shape[2]):
-        for v in range (depth.shape[1]):    
-            depth_z = depth[:,v,u]
-            Y_l = -(u -cx) * depth_z / focal
-            Y_r = Y_l + baseline
-            x =  -1 * Y_r * focal / (depth_z+eps) + cx
-            x = int(x)
-            if x >= depth.shape[2] or x <0:
-                x = 0
-            
-            if disp_r[:,v,x] == 0.0:
-                disp_r[:,v,x] = disp[:,v,u]
-            else:
-                if disp[:,v,u] >disp_r[:,v,x]:
-                    disp_r[:,v,x] = disp[:,v,u]              
-
-                
-    save_image(disp_r/torch.max(disp), 'result/disp_r/tmp.png')
-    disp_r = torch.squeeze(disp_r)
-    disp_r = disp_r.data.cpu().numpy()
-    img = disp_r
-    img = (img*256).astype('uint16')
-    img = Image.fromarray(img)
-    img.save('result/disp_r/'+filename)
-        
-
-
-
-
-
-
-print("train")
 def train(imgL,imgR, disp_L,disp_R,idx):
         model.train()
 
@@ -183,11 +112,20 @@ def train(imgL,imgR, disp_L,disp_R,idx):
             save_image(disp_left/torch.max(disp_left), 'result/train/"right_' + test_left_img[idx].split('/')[-1])
 
         
-        criterian(disp_left,disp_right,imgL,imgR)
+        RecLoss, SmoothnessLoss, LRLoss = criterian(disp_left,disp_right,imgL,imgR)
         if disp_left.ndim == 4:
             disp_left = torch.squeeze(disp_left,0)
             disp_right = torch.squeeze(disp_right,0)
-        loss = F.smooth_l1_loss(disp_left[maskL], disp_trueL[maskL], size_average=True) + F.smooth_l1_loss(disp_right[maskR], disp_trueR[maskR], size_average=True)
+        
+        GTLossL = F.smooth_l1_loss(disp_left[maskL], disp_trueL[maskL], size_average=True)
+        GTLossR = F.smooth_l1_loss(disp_right[maskR], disp_trueR[maskR], size_average=True)
+        loss =GTLossL + GTLossR + RecLoss +  SmoothnessLoss+ LRLoss
+
+        print("GTLossL=",GTLossL)
+        print("GTLossR=",GTLossR)
+        print("RecLoss=",RecLoss)
+        print("SmoothnessLoss=",SmoothnessLoss)
+        print("LRLoss=",LRLoss)
         
 
 
@@ -269,8 +207,7 @@ def main():
 
         ## training ##
         for batch_idx, (imgL_crop, imgR_crop, disp_crop_L,disp_crop_R) in enumerate(TrainImgLoader):
-            # left2right(disp_crop_L,batch_idx)
-            # continue
+          
 
             start_time = time.time()
             loss = train(imgL_crop,imgR_crop, disp_crop_L,disp_crop_R,batch_idx)
