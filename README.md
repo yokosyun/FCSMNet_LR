@@ -1,26 +1,26 @@
 # FCSMNet_LR
 
 ##train
+
 train.sh
 
-##inference
+<h2>inference</h2>
 inference.sh
 
 ##tested env
-CUDA10.2
++ CUDA10.2
 
-NVIDIA-DRIVER 440.100
++ NVIDIA-DRIVER 440.100
++ pytorch 1.5.0
 
-pytorch 1.5.0
++ python 3.6.9
 
-python 3.6.9
-
-tensorboard
++ tensorboard
 
 
 
 ##dataset supported
-KITTI 2015
++ KITTI 2015
 
 + right ground truth disparity map
 
