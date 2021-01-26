@@ -34,18 +34,18 @@ class LRLoss(nn.Module):
         rec_loss_left = alpha * SSIM_left + (1 - alpha) * SAD_left
         REC_loss = rec_loss_left + rec_loss_right
 
-        # # 2. Depth SMOOTHNESS loss
-        # left_disp_smooth = self.DisparitySmoothness(disp_left, left)
-        # right_disp_smooth = self.DisparitySmoothness(disp_right, right)
+        # 2. Depth SMOOTHNESS loss
+        left_disp_smooth = self.DisparitySmoothness(disp_left, left)
+        right_disp_smooth = self.DisparitySmoothness(disp_right, right)
 
-        # disp_smooth_loss = left_disp_smooth + right_disp_smooth
+        disp_smooth_loss = left_disp_smooth + right_disp_smooth
 
-        # # 3. LR CONSISTENCY loss
-        # LtoR = self.bilinear_sampler_1d_h(disp_left, disp_right)
-        # RtoL = self.bilinear_sampler_1d_h(disp_right, -1 * disp_left)
-        # lr_left_loss = torch.mean(torch.abs(RtoL - disp_left))
-        # lr_right_loss = torch.mean(torch.abs(LtoR - disp_right))
-        # lr_loss = lr_left_loss + lr_right_loss
+        # 3. LR CONSISTENCY loss
+        LtoR = self.bilinear_sampler_1d_h(disp_left, disp_right)
+        RtoL = self.bilinear_sampler_1d_h(disp_right, -1 * disp_left)
+        lr_left_loss = torch.mean(torch.abs(RtoL - disp_left))
+        lr_right_loss = torch.mean(torch.abs(LtoR - disp_right))
+        lr_loss = lr_left_loss + lr_right_loss
 
 
 
@@ -81,9 +81,8 @@ class LRLoss(nn.Module):
         print('loss_time = %.4f [s]' %(time.time() - start_time))
 
       
-        # return 1 * REC_loss, 0.1 * disp_smooth_loss,  0.1 * lr_loss
-        return 1 * REC_loss, 0,  0
-
+        return 1 * REC_loss, 0.1 * disp_smooth_loss,  0.1 * lr_loss
+  
 
 #Bilinear sampler in pytorch(https://github.com/alwynmathew/bilinear-sampler-pytorch)
     def bilinear_sampler_1d_h(self,input_images, x_offset, wrap_mode="border", tensor_type='torch.cuda.FloatTensor'):
